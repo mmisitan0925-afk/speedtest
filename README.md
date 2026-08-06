@@ -1,5 +1,7 @@
 # ⚡ 星穹测速站
 
+<p align="center"><img src="assets/img/logo-hsr.png" width="340" alt="崩坏：星穹铁道"></p>
+
 > 《崩坏：星穹铁道》画风的网络测速工具 —— 下载、上传、Ping、抖动一次测清。
 
 ## 🚀 在线测试
