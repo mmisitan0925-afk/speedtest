@@ -2,7 +2,9 @@
 
 > 《崩坏：星穹铁道》画风的网络测速工具 —— 下载、上传、Ping、抖动一次测清。
 
-🔗 **在线体验：https://mmisitan0925-afk.github.io/speedtest/**
+## 🚀 在线测试
+
+[➡️ 立即打开在线测试](https://mmisitan0925-afk.github.io/speedtest/)
 
 ![测速站界面背景](assets/img/bg-luofu.jpg)
 
