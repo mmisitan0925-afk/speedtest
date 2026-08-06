@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070b16">
+<title>星网测速 · 网络速度测试</title>
+<style>
+/* ============================================================
+   星网测速 —— 纯前端网络测速
+   测速源：Cloudflare 官方测速端点（全球 Anycast，就近节点）
+   配色：青 #00d4ff / 金 #f0c040 / 深空 #070b16
+   ============================================================ */
+:root{
+  --cyan:#00d4ff;
+  --gold:#f0c040;
+  --bg:#070b16;
+  --text:#cfe8ff;
+  --dim:#7f9bc0;
+  --ok:#3ce88a;
+  --warn:#ffb84d;
+  --bad:#ff5a6e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* 深空底色 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 0%, rgba(30,60,140,.25), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 90% 25%, rgba(0,120,180,.18), transparent 60%),
+    radial-gradient(ellipse 80% 55% at 50% 115%, rgba(90,30,120,.14), transparent 65%);
+}
+/* 星轨网格 */
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.07;
+  background-image:
+    linear-gradient(rgba(0,212,255,.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.5) 1px, transparent 1px);
+  background-size:46px 46px;
+}
+#bgCanvas{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+.page{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:24px 16px 56px}
+
+/* ---------- 页头 ---------- */
+header{text-align:center;padding:14px 0 6px}
+header .logo{font-size:clamp(30px,6vw,46px);letter-spacing:6px;font-weight:800;
+  background:linear-gradient(90deg,#eaf6ff,var(--cyan) 40%,var(--gold));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 18px rgba(0,212,255,.45));
+}
+header .sub{margin-top:8px;font-size:13px;letter-spacing:4px;color:var(--dim)}
+header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.5),transparent)}
+
+/* IP 信息条 */
+.info-bar{
+  margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  padding:10px 16px;border-radius:12px;
+  background:rgba(10,16,30,.55);border:1px solid rgba(0,212,255,.18);
+  font-size:13px;letter-spacing:1px;color:var(--dim);
+}
+.info-bar b{color:var(--cyan);font-weight:600}
+
+/* ---------- 主区域 ---------- */
+.main-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-top:20px}
+@media (max-width:760px){.main-grid{grid-template-columns:1fr}}
+
+/* 仪表盘卡片 */
+.card{
+  background:linear-gradient(160deg,rgba(16,26,46,.72),rgba(8,12,26,.55));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(0,212,255,.22);border-radius:18px;
+  box-shadow:0 0 44px rgba(0,212,255,.07) inset,0 10px 34px rgba(0,0,0,.45);
+  padding:22px;position:relative;overflow:hidden;
+}
+.card::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(160deg,rgba(240,192,64,.06),transparent 40%);}
+.gauge-card{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-wrap{position:relative;width:min(240px,70vw);aspect-ratio:1}
+.gauge-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge-bg{fill:none;stroke:rgba(0,212,255,.12);stroke-width:12}
+.gauge-arc{
+  fill:none;stroke:url(#gaugeGrad);stroke-width:12;stroke-linecap:round;
+  stroke-dasharray:628.3;stroke-dashoffset:628.3;
+  transition:stroke-dashoffset .18s linear;
+  filter:drop-shadow(0 0 8px rgba(0,212,255,.55));
+}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px}
+.gauge-num{font-size:clamp(30px,6vw,44px);font-weight:800;color:#eaf6ff;
+  text-shadow:0 0 16px rgba(0,212,255,.5);font-variant-numeric:tabular-nums}
+.gauge-unit{font-size:13px;letter-spacing:3px;color:var(--dim)}
+.gauge-status{margin-top:14px;font-size:14px;letter-spacing:2px;color:var(--gold);
+  min-height:22px;text-shadow:0 0 10px rgba(240,192,64,.5)}
+.gauge-status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--gold);margin-right:8px;animation:blink .8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* 曲线卡片 */
+.chart-card h3{font-size:14px;letter-spacing:4px;color:var(--dim);margin-bottom:10px}
+.chart-card h3 span{color:var(--gold)}
+#speedChart{width:100%;height:200px;display:block}
+.chart-legend{display:flex;gap:16px;margin-top:8px;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.chart-legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.chart-legend .lg-dl i{background:var(--cyan)}
+.chart-legend .lg-up i{background:var(--gold)}
+
+/* 控制按钮 */
+.controls{margin-top:18px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{
+  font-family:inherit;font-size:16px;letter-spacing:4px;padding:13px 42px;border-radius:999px;cursor:pointer;
+  color:#061018;font-weight:700;border:none;
+  background:linear-gradient(90deg,#00d4ff,#7ce8ff);
+  box-shadow:0 0 26px rgba(0,212,255,.45),0 6px 18px rgba(0,0,0,.4);
+  transition:.25s;touch-action:manipulation;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(0,212,255,.7)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.gold{background:linear-gradient(90deg,#f0c040,#ffe9a8);color:#14100a;
+  box-shadow:0 0 26px rgba(240,192,64,.45),0 6px 18px rgba(0,0,0,.4)}
+.btn.gold:hover{box-shadow:0 0 40px rgba(240,192,64,.7)}
+
+/* ---------- 结果卡片 ---------- */
+.results{margin-top:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:760px){.results{grid-template-columns:repeat(2,1fr)}}
+.result-card{padding:16px 12px;text-align:center}
+.result-card .r-label{font-size:12px;letter-spacing:4px;color:var(--dim)}
+.result-card .r-value{margin-top:8px;font-size:clamp(22px,4.5vw,32px);font-weight:800;color:#eaf6ff;
+  font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(0,212,255,.35)}
+.result-card .r-value small{font-size:12px;color:var(--dim);font-weight:400;margin-left:3px}
+.result-card .r-grade{margin-top:6px;font-size:12px;letter-spacing:2px;border-radius:999px;
+  padding:3px 12px;display:inline-block}
+.grade-ex{color:var(--ok);border:1px solid rgba(60,232,138,.4);background:rgba(60,232,138,.08)}
+.grade-good{color:var(--cyan);border:1px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08)}
+.grade-mid{color:var(--warn);border:1px solid rgba(255,184,77,.4);background:rgba(255,184,77,.08)}
+.grade-bad{color:var(--bad);border:1px solid rgba(255,90,110,.4);background:rgba(255,90,110,.08)}
+.r-pending .r-value{color:var(--dim);text-shadow:none}
+
+/* ---------- 历史记录 ---------- */
+.history{margin-top:20px;padding:18px 20px}
+.history h3{font-size:14px;letter-spacing:4px;color:var(--gold);margin-bottom:12px;text-align:center}
+.history-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.history-list li{
+  display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding:9px 14px;border-radius:10px;
+  background:rgba(0,212,255,.045);border:1px solid rgba(0,212,255,.13);
+  font-size:13px;letter-spacing:1px;animation:histIn .4s ease both;
+}
+@keyframes histIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.history-list .h-time{color:var(--dim)}
+.history-list .h-metrics{display:flex;gap:14px;flex-wrap:wrap}
+.history-list .h-metrics b{color:var(--cyan);font-weight:600}
+.history-empty{justify-content:center;color:var(--dim);letter-spacing:3px;font-size:13px}
+
+/* ---------- 页脚 ---------- */
+footer{margin-top:36px;text-align:center;position:relative;z-index:2}
+footer .note{font-size:12px;letter-spacing:2px;color:var(--dim);opacity:.8;line-height:2}
+footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,212,255,.5),transparent)}
+
+/* Toast */
+.toast{
+  position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(80px);
+  background:rgba(10,16,30,.92);border:1px solid rgba(0,212,255,.4);
+  color:var(--text);padding:11px 22px;border-radius:999px;font-size:14px;letter-spacing:2px;
+  z-index:99;opacity:0;transition:.35s;pointer-events:none;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="page">
+
+  <!-- ===== 页头 ===== -->
+  <header>
+    <div class="logo">✦ 星网测速</div>
+    <p class="sub">STARNET SPEED TEST · CLOUDFLARE 全球节点</p>
+    <div class="info-bar" id="infoBar">正在获取网络信息…</div>
+  </header>
+
+  <!-- ===== 仪表盘 + 曲线 ===== -->
+  <div class="main-grid">
+    <div class="card gauge-card">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 220 220">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00d4ff"/>
+              <stop offset="70%" stop-color="#7ce8ff"/>
+              <stop offset="100%" stop-color="#f0c040"/>
+            </linearGradient>
+          </defs>
+          <circle class="gauge-bg" cx="110" cy="110" r="100"/>
+          <circle class="gauge-arc" id="gaugeArc" cx="110" cy="110" r="100"/>
+        </svg>
+        <div class="gauge-center">
+          <div class="gauge-num" id="gaugeNum">0</div>
+          <div class="gauge-unit" id="gaugeUnit">Mbps</div>
+        </div>
+      </div>
+      <div class="gauge-status" id="gaugeStatus"><span class="dot"></span>准备就绪</div>
+    </div>
+
+    <div class="card chart-card">
+      <h3>实时速率曲线 <span id="chartPhase">—</span></h3>
+      <canvas id="speedChart"></canvas>
+      <div class="chart-legend">
+        <span class="lg-dl"><i></i>下载</span>
+        <span class="lg-up"><i></i>上传</span>
+        <span id="chartStats" style="margin-left:auto">等待测试</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 控制按钮 ===== -->
+  <div class="controls">
+    <button class="btn" id="startBtn">🚀 开始测速</button>
+    <button class="btn gold" id="shareBtn">📋 分享结果</button>
+  </div>
+
+  <!-- ===== 结果卡片 ===== -->
+  <div class="results" id="results">
+    <div class="card result-card r-pending">
+      <div class="r-label">延迟 Ping</div>
+      <div class="r-value">--<small>ms</small></div>
+      <div class="r-grade" id="gradePing">—</div>
+    </div>
+    <div class="card result-card r-pending">
+      <div class="r-label">抖动 Jitter</div>
+      <div class="r-value">--<small>ms</small></div>
+      <div class="r-grade" id="gradeJitter">—</div>
+    </div>
+    <div class="card result-card r-pending">
+      <div class="r-label">下载 Download</div>
+      <div class="r-value">--<small>Mbps</small></div>
+      <div class="r-grade" id="gradeDown">—</div>
+    </div>
+    <div class="card result-card r-pending">
+      <div class="r-label">上传 Upload</div>
+      <div class="r-value">--<small>Mbps</small></div>
+      <div class="r-grade" id="gradeUp">—</div>
+    </div>
+  </div>
+
+  <!-- ===== 历史记录 ===== -->
+  <div class="card history">
+    <h3>◆ 历史测速记录 ◆</h3>
+    <ul class="history-list" id="historyList"></ul>
+  </div>
+
+  <!-- ===== 页脚 ===== -->
+  <footer>
+    <div class="note">测速数据由 Cloudflare 全球节点（就近 PoP）提供，仅供参考 · 实际速率受服务器、时段与网络环境影响<br>本页面纯前端实现，测速过程不会上传你的任何真实数据（上传测试使用随机数据）</div>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   星网测速 —— 交互脚本
+   测速源：Cloudflare speed.cloudflare.com（CORS 已验证可用）
+   - 下载：GET /__down?bytes=N（流式读取，实时统计）
+   - 上传：POST /__up（随机数据，测吞吐）
+   - Ping：GET /__down?bytes=0（纯往返时间）
+   - 网络信息：/meta 响应头（IP / 城市 / ASN）
+   ============================================================ */
+'use strict';
+
+const $ = id => document.getElementById(id);
+const CF = 'https://speed.cloudflare.com';
+
+/* ---------- 工具 ---------- */
+const fmt = (n, d = 1) => (isFinite(n) ? n.toFixed(d) : '--');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ============================================================
+   背景 Canvas：粒子星流
+   ============================================================ */
+const canvas = $('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+addEventListener('resize', resize);
+
+const parts = Array.from({ length: 90 }, () => ({
+  x: Math.random() * W, y: Math.random() * H,
+  vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35,
+  r: Math.random() * 1.8 + 0.4, c: Math.random() < 0.8 ? '0,212,255' : '240,192,64',
+  tw: Math.random() * Math.PI * 2
+}));
+
+function drawBg(t) {
+  ctx.clearRect(0, 0, W, H);
+  const time = t / 1000;
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
+    if (p.y < -10) p.y = H + 10; if (p.y > H + 10) p.y = -10;
+    const a = 0.35 + 0.35 * Math.sin(time * 2 + p.tw);
+    ctx.fillStyle = 'rgba(' + p.c + ',' + a + ')';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+  requestAnimationFrame(drawBg);
+}
+requestAnimationFrame(drawBg);
+
+/* ============================================================
+   Toast 提示
+   ============================================================ */
+let toastTimer = null;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ============================================================
+   网络信息（IP / 城市 / ASN）—— 读取 /meta 响应头
+   ============================================================ */
+/* 常见 ASN → ISP 名称 */
+const ASN_MAP = {
+  '13335': 'Cloudflare',
+  '4134': '中国电信', '4809': '中国电信', '4812': '中国电信',
+  '4837': '中国联通', '9929': '中国联通',
+  '9808': '中国移动', '56046': '中国移动',
+  '4538': '中国教育网', '174': 'Cogent', '3356': 'Lumen', '2914': 'NTT'
+};
+async function loadInfo() {
+  try {
+    const r = await fetch(CF + '/meta', { cache: 'no-store' });
+    const ip = r.headers.get('cf-meta-ip');
+    const city = r.headers.get('cf-meta-city');
+    const country = r.headers.get('cf-meta-country');
+    const asn = r.headers.get('cf-meta-asn');
+    const colo = r.headers.get('cf-meta-colo');
+    const isp = ASN_MAP[asn] || (asn ? 'AS' + asn : '');
+    const parts = [];
+    if (ip) parts.push('IP <b>' + ip + '</b>');
+    if (city) parts.push('节点 <b>' + city + (country ? ', ' + country : '') + '</b>');
+    if (isp) parts.push('运营商 <b>' + isp + '</b>');
+    if (colo) parts.push('PoP <b>' + colo + '</b>');
+    $('infoBar').innerHTML = parts.length ? parts.join(' · ') : '网络信息获取失败';
+  } catch (e) {
+    $('infoBar').textContent = '网络信息获取失败（不影响测速）';
+  }
+}
+
+/* ============================================================
+   仪表盘 & 曲线
+   ============================================================ */
+const CIRC = 2 * Math.PI * 100; // 圆周 ≈ 628.3
+const gaugeArc = $('gaugeArc');
+const gaugeNum = $('gaugeNum');
+const gaugeUnit = $('gaugeUnit');
+const gaugeStatus = $('gaugeStatus');
+
+function setGauge(value, unit, ratio) {
+  gaugeNum.textContent = fmt(value, value >= 100 ? 0 : 1);
+  gaugeUnit.textContent = unit;
+  gaugeArc.style.strokeDashoffset = String(CIRC * (1 - Math.max(0, Math.min(1, ratio))));
+}
+function setStatus(txt, showDot) {
+  gaugeStatus.innerHTML = (showDot ? '<span class="dot"></span>' : '') + txt;
+}
+
+/* 曲线图（双色：下载青 / 上传金） */
+const chart = $('speedChart');
+const cctx = chart.getContext('2d');
+let chartSamples = [];   // {t, mbps, up}
+let chartPhase = '';
+let lastMax = 100;
+
+function drawChart() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = chart.clientWidth, h = 200;
+  chart.width = w * dpr; chart.height = h * dpr;
+  cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cctx.clearRect(0, 0, w, h);
+
+  /* 网格 */
+  cctx.strokeStyle = 'rgba(0,212,255,.08)';
+  cctx.lineWidth = 1;
+  for (let i = 1; i < 5; i++) {
+    const y = h * i / 5;
+    cctx.beginPath(); cctx.moveTo(0, y); cctx.lineTo(w, y); cctx.stroke();
+  }
+  if (!chartSamples.length) {
+    cctx.fillStyle = 'rgba(127,155,192,.6)';
+    cctx.font = '13px sans-serif';
+    cctx.textAlign = 'center';
+    cctx.fillText('等待测速数据…', w / 2, h / 2);
+    return;
+  }
+
+  /* 动态 Y 轴上限 */
+  const maxV = Math.max(...chartSamples.map(s => s.mbps), 1);
+  lastMax = Math.max(lastMax * 0.92, Math.ceil(maxV / 10) * 10);
+  const tMax = Math.max(...chartSamples.map(s => s.t), 1);
+
+  /* 下载曲线（青） */
+  const dl = chartSamples.filter(s => !s.up);
+  if (dl.length > 1) {
+    const grad = cctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(0,212,255,.28)');
+    grad.addColorStop(1, 'rgba(0,212,255,0)');
+    cctx.beginPath();
+    dl.forEach((s, i) => {
+      const x = w * s.t / tMax, y = h - h * s.mbps / lastMax;
+      i ? cctx.lineTo(x, y) : cctx.moveTo(x, y);
+    });
+    cctx.lineTo(w, h); cctx.lineTo(0, h); cctx.closePath();
+    cctx.fillStyle = grad; cctx.fill();
+    cctx.beginPath();
+    dl.forEach((s, i) => {
+      const x = w * s.t / tMax, y = h - h * s.mbps / lastMax;
+      i ? cctx.lineTo(x, y) : cctx.moveTo(x, y);
+    });
+    cctx.strokeStyle = '#00d4ff'; cctx.lineWidth = 2;
+    cctx.shadowColor = 'rgba(0,212,255,.6)'; cctx.shadowBlur = 8;
+    cctx.stroke(); cctx.shadowBlur = 0;
+  }
+
+  /* 上传曲线（金） */
+  const up = chartSamples.filter(s => s.up);
+  if (up.length > 1) {
+    const grad = cctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(240,192,64,.26)');
+    grad.addColorStop(1, 'rgba(240,192,64,0)');
+    cctx.beginPath();
+    up.forEach((s, i) => {
+      const x = w * s.t / tMax, y = h - h * s.mbps / lastMax;
+      i ? cctx.lineTo(x, y) : cctx.moveTo(x, y);
+    });
+    cctx.lineTo(w, h); cctx.lineTo(0, h); cctx.closePath();
+    cctx.fillStyle = grad; cctx.fill();
+    cctx.beginPath();
+    up.forEach((s, i) => {
+      const x = w * s.t / tMax, y = h - h * s.mbps / lastMax;
+      i ? cctx.lineTo(x, y) : cctx.moveTo(x, y);
+    });
+    cctx.strokeStyle = '#f0c040'; cctx.lineWidth = 2;
+    cctx.shadowColor = 'rgba(240,192,64,.6)'; cctx.shadowBlur = 8;
+    cctx.stroke(); cctx.shadowBlur = 0;
+  }
+
+  /* Y 轴刻度 */
+  cctx.fillStyle = 'rgba(127,155,192,.7)';
+  cctx.font = '10px sans-serif';
+  cctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const v = Math.round(lastMax * i / 4);
+    if (v > 0) cctx.fillText(v + '', w - 6, h - h * i / 4 + 10);
+  }
+}
+
+function pushSample(mbps, up) {
+  chartSamples.push({ t: chartSamples.length ? chartSamples[chartSamples.length - 1].t + 0.2 : 0.2, mbps, up });
+  if (chartSamples.length > 300) chartSamples.shift();
+  drawChart();
+}
+
+/* ============================================================
+   测速逻辑
+   ============================================================ */
+let running = false;
+let abort = null;   // AbortController
+
+/* ---------- 延迟 / 抖动 ---------- */
+async function testPing() {
+  setStatus('Ping 测试中', true);
+  $('chartPhase').textContent = 'Ping';
+  const times = [];
+  for (let i = 0; i < 10; i++) {
+    if (abort.signal.aborted) throw new Error('aborted');
+    const t0 = performance.now();
+    try {
+      await fetch(CF + '/__down?bytes=0&t=' + Date.now() + '_' + i, { cache: 'no-store', signal: abort.signal });
+    } catch (e) { if (e.name === 'AbortError') throw e; times.push(999); continue; }
+    times.push(performance.now() - t0);
+    setGauge(times[times.length - 1], 'ms', Math.max(0, 1 - times[times.length - 1] / 200));
+    await sleep(60);
+  }
+  /* 取中位数更抗噪 */
+  const sorted = [...times].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  /* 抖动：相邻样本差均值 */
+  let jsum = 0;
+  for (let i = 1; i < times.length; i++) jsum += Math.abs(times[i] - times[i - 1]);
+  const jitter = jsum / (times.length - 1);
+  return { ping: median, jitter };
+}
+
+/* ---------- 下载测速（多阶段流式） ---------- */
+async function testDownload() {
+  setStatus('下载测速中', true);
+  $('chartPhase').textContent = '下载';
+  const stages = [4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024]; // 4MB / 16MB / 64MB
+  const speeds = [];
+  for (const bytes of stages) {
+    if (abort.signal.aborted) throw new Error('aborted');
+    const url = CF + '/__down?bytes=' + bytes + '&r=' + Math.random();
+    let received = 0, lastTick = performance.now(), lastBytes = 0;
+    const t0 = performance.now();
+    try {
+      const resp = await fetch(url, { cache: 'no-store', signal: abort.signal });
+      if (!resp.ok || !resp.body) throw new Error('bad response');
+      const reader = resp.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.length;
+        const now = performance.now();
+        if (now - lastTick >= 200) {
+          const inst = (received - lastBytes) * 8 / (now - lastTick) / 1000; // Mbps
+          lastBytes = received; lastTick = now;
+          setGauge(inst, 'Mbps', inst / Math.max(lastMax, inst));
+          pushSample(inst, false);
+          $('chartStats').textContent = fmt(received / 1048576, 1) + ' MB / ' + fmt((now - t0) / 1000, 1) + 's';
+        }
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      throw new Error('下载失败，请检查网络后重试');
+    }
+    const secs = (performance.now() - t0) / 1000;
+    const mbps = received * 8 / secs / 1e6;
+    speeds.push(mbps);
+  }
+  /* 取最大阶段速率作为结果（更接近真实带宽） */
+  return Math.max(...speeds);
+}
+
+/* ---------- 上传测速（多阶段 POST 随机数据） ---------- */
+async function testUpload() {
+  setStatus('上传测速中', true);
+  $('chartPhase').textContent = '上传';
+  const stages = [2 * 1024 * 1024, 8 * 1024 * 1024, 32 * 1024 * 1024]; // 2MB / 8MB / 32MB
+  const speeds = [];
+  /* 预生成随机数据缓冲（复用，避免重复生成卡顿） */
+  const chunk = new Uint8Array(1024 * 1024);
+  for (let i = 0; i < chunk.length; i++) chunk[i] = (Math.random() * 256) | 0;
+
+  for (const bytes of stages) {
+    if (abort.signal.aborted) throw new Error('aborted');
+    const blob = new Blob([chunk.slice(0, Math.min(bytes, chunk.length))]);
+    const t0 = performance.now();
+    try {
+      await fetch(CF + '/__up', {
+        method: 'POST', body: blob, signal: abort.signal
+      });
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      throw new Error('上传失败（可能被网络限制），跳过上传');
+    }
+    const secs = (performance.now() - t0) / 1000;
+    const mbps = bytes * 8 / secs / 1e6;
+    speeds.push(mbps);
+    setGauge(mbps, 'Mbps', mbps / Math.max(lastMax, mbps));
+    pushSample(mbps, true);
+    await sleep(100);
+  }
+  return Math.max(...speeds);
+}
+
+/* ============================================================
+   评分等级
+   ============================================================ */
+function gradePing(v) {
+  if (v < 30) return ['极佳', 'grade-ex'];
+  if (v < 60) return ['优秀', 'grade-good'];
+  if (v < 100) return ['良好', 'grade-mid'];
+  if (v < 150) return ['一般', 'grade-mid'];
+  return ['较差', 'grade-bad'];
+}
+function gradeJitter(v) {
+  if (v < 5) return ['极佳', 'grade-ex'];
+  if (v < 15) return ['优秀', 'grade-good'];
+  if (v < 30) return ['良好', 'grade-mid'];
+  return ['较差', 'grade-bad'];
+}
+function gradeSpeed(v) {
+  if (v >= 100) return ['极佳', 'grade-ex'];
+  if (v >= 50) return ['优秀', 'grade-good'];
+  if (v >= 20) return ['良好', 'grade-mid'];
+  if (v >= 10) return ['一般', 'grade-mid'];
+  return ['较差', 'grade-bad'];
+}
+
+/* ---------- 结果渲染 ---------- */
+function setResult(idx, label, value, unit, grade, gClass) {
+  const card = document.querySelectorAll('#results .result-card')[idx];
+  card.classList.remove('r-pending');
+  card.querySelector('.r-value').innerHTML = fmt(value) + '<small>' + unit + '</small>';
+  const g = card.querySelector('.r-grade');
+  g.textContent = grade;
+  g.className = 'r-grade ' + gClass;
+}
+
+/* ============================================================
+   历史记录（localStorage）
+   ============================================================ */
+let history = [];
+try { history = JSON.parse(localStorage.getItem('speedtest_history') || '[]') || []; } catch (e) { history = []; }
+function renderHistory() {
+  const ul = $('historyList');
+  if (!history.length) {
+    ul.innerHTML = '<li class="history-empty">暂无记录，点击「开始测速」</li>';
+    return;
+  }
+  ul.innerHTML = history.map((h, i) => {
+    const d = new Date(h.time);
+    const ts = (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return '<li style="animation-delay:' + (i * 0.06) + 's">' +
+      '<span class="h-time">' + ts + '</span>' +
+      '<span class="h-metrics">' +
+      '<span>延迟 <b>' + fmt(h.ping, 0) + 'ms</b></span>' +
+      '<span>下载 <b>' + fmt(h.down) + 'M</b></span>' +
+      '<span>上传 <b>' + fmt(h.up) + 'M</b></span>' +
+      '</span></li>';
+  }).join('');
+}
+function pushHistory(r) {
+  history.unshift(r);
+  if (history.length > 8) history.length = 8;
+  try { localStorage.setItem('speedtest_history', JSON.stringify(history)); } catch (e) { }
+  renderHistory();
+}
+
+/* ============================================================
+   测速主流程
+   ============================================================ */
+const startBtn = $('startBtn');
+const shareBtn = $('shareBtn');
+
+async function runTest() {
+  if (running) return;
+  running = true;
+  startBtn.disabled = true;
+  startBtn.textContent = '⏳ 测速中…';
+  abort = new AbortController();
+
+  /* 重置界面 */
+  chartSamples = []; lastMax = 100; drawChart();
+  setGauge(0, 'Mbps', 0);
+  $('chartStats').textContent = '等待测试';
+  document.querySelectorAll('#results .result-card').forEach(c => {
+    c.classList.add('r-pending');
+    c.querySelector('.r-value').innerHTML = '--<small>—</small>';
+    c.querySelector('.r-grade').textContent = '—';
+    c.querySelector('.r-grade').className = 'r-grade';
+  });
+
+  let ping = 0, jitter = 0, down = 0, up = 0;
+  try {
+    /* ① 延迟 + 抖动 */
+    const p = await testPing();
+    ping = p.ping; jitter = p.jitter;
+    const gPing = gradePing(ping), gJit = gradeJitter(jitter);
+    setResult(0, 'Ping', ping, 'ms', gPing[0], gPing[1]);
+    setResult(1, 'Jitter', jitter, 'ms', gJit[0], gJit[1]);
+
+    /* ② 下载 */
+    down = await testDownload();
+    const gD = gradeSpeed(down);
+    setResult(2, 'Download', down, 'Mbps', gD[0], gD[1]);
+    setGauge(down, 'Mbps', 1);
+
+    /* ③ 上传 */
+    up = await testUpload();
+    const gU = gradeSpeed(up);
+    setResult(3, 'Upload', up, 'Mbps', gU[0], gU[1]);
+    setGauge(up, 'Mbps', 1);
+
+    setStatus('测试完成', false);
+    $('chartPhase').textContent = '完成';
+    $('chartStats').textContent = '总计 ' + fmt(ping, 0) + 'ms / ' + fmt(down) + '↓ / ' + fmt(up) + '↑';
+    pushHistory({ time: Date.now(), ping, down, up });
+    toast('✅ 测速完成！结果已保存');
+  } catch (e) {
+    if (e.message !== 'aborted') {
+      setStatus('⚠ ' + e.message, false);
+      toast('⚠ ' + e.message);
+    }
+  } finally {
+    running = false;
+    startBtn.disabled = false;
+    startBtn.textContent = '🚀 开始测速';
+  }
+}
+
+startBtn.addEventListener('click', runTest);
+
+/* 分享结果 */
+shareBtn.addEventListener('click', () => {
+  const cards = document.querySelectorAll('#results .result-card');
+  const vals = [...cards].map(c => c.querySelector('.r-value').textContent.trim());
+  if (vals.every(v => v.startsWith('--'))) { toast('请先完成一次测速'); return; }
+  const text = '✦ 星网测速结果 ✦\n' +
+    '延迟: ' + vals[0] + '\n' +
+    '抖动: ' + vals[1] + '\n' +
+    '下载: ' + vals[2] + '\n' +
+    '上传: ' + vals[3] + '\n' +
+    '—— 星网测速 STARNET SPEED TEST';
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => toast('📋 结果已复制到剪贴板'))
+    .catch(() => { toast('复制失败，请手动截图分享'); });
+});
+
+/* ============================================================
+   初始化
+   ============================================================ */
+renderHistory();
+loadInfo();
+drawChart();
+addEventListener('resize', drawChart);
+</script>
+</body>
+</html>
