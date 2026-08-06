@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#070b16">
-<title>星网测速 · 网络速度测试</title>
+<title>星穹测速 · 仙舟罗浮网络监测站</title>
 <style>
 /* ============================================================
-   星网测速 —— 纯前端网络测速
+   星穹测速 —— 崩坏：星穹铁道主题 · 液态玻璃质感
    测速源：Cloudflare 官方测速端点（全球 Anycast，就近节点）
    配色：青 #00d4ff / 金 #f0c040 / 深空 #070b16
    ============================================================ */
@@ -38,56 +38,133 @@ body::before{
     radial-gradient(ellipse 60% 45% at 90% 25%, rgba(0,120,180,.18), transparent 60%),
     radial-gradient(ellipse 80% 55% at 50% 115%, rgba(90,30,120,.14), transparent 65%);
 }
-/* 星轨网格 */
+/* 仙舟罗浮背景图（压暗，衬托液态玻璃） */
+.bg-art{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:url('assets/img/bg-luofu.jpg') center/cover no-repeat;
+  opacity:.42;filter:saturate(.9) brightness(.68);
+}
+.bg-art::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(7,11,22,.82),rgba(7,11,22,.55) 45%,rgba(7,11,22,.9));
+}
+/* 崩铁六边形晶格底纹 */
 body::after{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.07;
-  background-image:
-    linear-gradient(rgba(0,212,255,.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,.5) 1px, transparent 1px);
-  background-size:46px 46px;
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.1;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'><path d='M28 2 L52 16 V44 L28 58 L4 44 V16 Z' fill='none' stroke='%2300d4ff' stroke-width='1'/><path d='M28 58 L52 72 V100 L28 114 L4 100 V72 Z' fill='none' stroke='%2300d4ff' stroke-width='1'/><path d='M-28 -42 L-4 -28 V0 L-28 14 L-52 0 V-28 Z' fill='none' stroke='%2300d4ff' stroke-width='1'/><path d='M84 -42 L108 -28 V0 L84 14 L60 0 V-28 Z' fill='none' stroke='%2300d4ff' stroke-width='1'/></svg>");
 }
 #bgCanvas{position:fixed;inset:0;z-index:1;pointer-events:none}
 
+/* 漂浮六边形装饰 */
+.hex-deco{
+  position:fixed;z-index:1;pointer-events:none;opacity:.5;
+  background-repeat:no-repeat;
+  animation:hexFloat 14s ease-in-out infinite;
+}
+.hd1{width:110px;height:126px;left:5%;top:16%;animation-delay:0s;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115'><polygon points='50,5 93,30 93,85 50,110 7,85 7,30' fill='none' stroke='%2300d4ff' stroke-width='2'/><polygon points='50,20 82,38 82,77 50,95 18,77 18,38' fill='none' stroke='%23f0c040' stroke-width='1' opacity='.6'/></svg>");}
+.hd2{width:64px;height:74px;right:7%;top:28%;animation-delay:-4s;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115'><polygon points='50,5 93,30 93,85 50,110 7,85 7,30' fill='none' stroke='%23f0c040' stroke-width='2'/></svg>");}
+.hd3{width:88px;height:101px;left:10%;bottom:10%;animation-delay:-8s;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115'><polygon points='50,5 93,30 93,85 50,110 7,85 7,30' fill='none' stroke='%2300d4ff' stroke-width='1.5' opacity='.7'/></svg>");}
+@keyframes hexFloat{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-16px) rotate(8deg)}}
+
 .page{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:24px 16px 56px}
+
+/* ============================================================
+   液态玻璃（Liquid Glass）核心效果
+   ============================================================ */
+.glass{
+  position:relative;
+  background:linear-gradient(145deg,
+    rgba(255,255,255,.11), rgba(255,255,255,.03) 38%,
+    rgba(255,255,255,.06) 62%, rgba(255,255,255,.02));
+  backdrop-filter:blur(26px) saturate(1.8);
+  -webkit-backdrop-filter:blur(26px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:24px;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255,255,255,.35),      /* 顶部高光折射 */
+    inset 0 -1.5px 2px rgba(255,255,255,.05),
+    inset 2.5px 0 2.5px rgba(255,255,255,.07),    /* 左右折射 */
+    inset -2.5px 0 2.5px rgba(255,255,255,.07),
+    0 12px 40px rgba(0,0,0,.4);
+  overflow:hidden;
+}
+/* 液态光斑：顶部受光 + 底部反光 */
+.glass::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:
+    radial-gradient(120% 55% at 22% -8%, rgba(255,255,255,.16), transparent 55%),
+    radial-gradient(90% 45% at 85% 108%, rgba(0,212,255,.10), transparent 60%),
+    radial-gradient(60% 30% at 8% 95%, rgba(240,192,64,.07), transparent 60%);
+}
+/* 流动高光扫描 */
+.glass::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+  background:linear-gradient(115deg,
+    transparent 22%, rgba(255,255,255,.07) 40%,
+    rgba(255,255,255,.16) 50%, rgba(255,255,255,.07) 60%, transparent 78%);
+  background-size:260% 100%;
+  animation:glassFlow 7s ease-in-out infinite;
+}
+@keyframes glassFlow{
+  0%,8%{background-position:220% 0}
+  55%,100%{background-position:-140% 0}
+}
+/* 卡片内容层（保证在最上） */
+.glass > *{position:relative;z-index:2}
 
 /* ---------- 页头 ---------- */
 header{text-align:center;padding:14px 0 6px}
-header .logo{font-size:clamp(30px,6vw,46px);letter-spacing:6px;font-weight:800;
+/* 六边形徽章（太卜司玉兆） */
+.title-row{display:flex;align-items:center;justify-content:center;gap:16px}
+.title-emblem{
+  width:64px;height:64px;flex-shrink:0;
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+  background:linear-gradient(160deg,rgba(240,192,64,.34),rgba(0,212,255,.16));
+  display:grid;place-items:center;
+  filter:drop-shadow(0 0 14px rgba(240,192,64,.55));
+  animation:emblemSpin 12s linear infinite;
+}
+@keyframes emblemSpin{to{transform:rotate(360deg)}}
+.title-icon{width:40px;height:40px;object-fit:cover}
+header .logo{
+  font-size:clamp(28px,5.6vw,42px);letter-spacing:6px;font-weight:800;
   background:linear-gradient(90deg,#eaf6ff,var(--cyan) 40%,var(--gold));
   -webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 0 18px rgba(0,212,255,.45));
 }
 header .sub{margin-top:8px;font-size:13px;letter-spacing:4px;color:var(--dim)}
+/* 命途徽记 */
+.path-badges{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.path-badge{
+  font-size:12px;letter-spacing:3px;padding:4px 14px;border-radius:999px;
+  border:1px solid rgba(0,212,255,.35);color:var(--cyan);
+  background:rgba(0,212,255,.06);box-shadow:0 0 12px rgba(0,212,255,.12) inset;
+}
+.path-badge.gold{color:var(--gold);border-color:rgba(240,192,64,.4);background:rgba(240,192,64,.06)}
+.path-badge.purple{color:#b79cff;border-color:rgba(150,120,255,.4);background:rgba(150,120,255,.06)}
 header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
   background:linear-gradient(90deg,transparent,rgba(0,212,255,.5),transparent)}
 
-/* IP 信息条 */
+/* IP 信息条（液态玻璃） */
 .info-bar{
   margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
-  padding:10px 16px;border-radius:12px;
-  background:rgba(10,16,30,.55);border:1px solid rgba(0,212,255,.18);
+  padding:11px 18px;border-radius:16px;
   font-size:13px;letter-spacing:1px;color:var(--dim);
 }
 .info-bar b{color:var(--cyan);font-weight:600}
 
 /* ---------- 主区域 ---------- */
-.main-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-top:20px}
+.main-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:18px;margin-top:22px}
 @media (max-width:760px){.main-grid{grid-template-columns:1fr}}
 
 /* 仪表盘卡片 */
-.card{
-  background:linear-gradient(160deg,rgba(16,26,46,.72),rgba(8,12,26,.55));
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border:1px solid rgba(0,212,255,.22);border-radius:18px;
-  box-shadow:0 0 44px rgba(0,212,255,.07) inset,0 10px 34px rgba(0,0,0,.45);
-  padding:22px;position:relative;overflow:hidden;
-}
-.card::before{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(160deg,rgba(240,192,64,.06),transparent 40%);}
-.gauge-card{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-card{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 22px}
 .gauge-wrap{position:relative;width:min(240px,70vw);aspect-ratio:1}
 .gauge-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
-.gauge-bg{fill:none;stroke:rgba(0,212,255,.12);stroke-width:12}
+.gauge-bg{fill:none;stroke:rgba(255,255,255,.10);stroke-width:12}
 .gauge-arc{
   fill:none;stroke:url(#gaugeGrad);stroke-width:12;stroke-linecap:round;
   stroke-dasharray:628.3;stroke-dashoffset:628.3;
@@ -106,6 +183,7 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
 /* 曲线卡片 */
+.chart-card{padding:22px}
 .chart-card h3{font-size:14px;letter-spacing:4px;color:var(--dim);margin-bottom:10px}
 .chart-card h3 span{color:var(--gold)}
 #speedChart{width:100%;height:200px;display:block}
@@ -115,7 +193,7 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
 .chart-legend .lg-up i{background:var(--gold)}
 
 /* 控制按钮 */
-.controls{margin-top:18px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.controls{margin-top:20px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .btn{
   font-family:inherit;font-size:16px;letter-spacing:4px;padding:13px 42px;border-radius:999px;cursor:pointer;
   color:#061018;font-weight:700;border:none;
@@ -130,11 +208,12 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
   box-shadow:0 0 26px rgba(240,192,64,.45),0 6px 18px rgba(0,0,0,.4)}
 .btn.gold:hover{box-shadow:0 0 40px rgba(240,192,64,.7)}
 
-/* ---------- 结果卡片 ---------- */
-.results{margin-top:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+/* ---------- 结果卡片（命途主题） ---------- */
+.results{margin-top:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media (max-width:760px){.results{grid-template-columns:repeat(2,1fr)}}
-.result-card{padding:16px 12px;text-align:center}
-.result-card .r-label{font-size:12px;letter-spacing:4px;color:var(--dim)}
+.result-card{padding:16px 12px;text-align:center;border-radius:20px}
+.result-card .r-path{font-size:11px;letter-spacing:3px;color:var(--gold);opacity:.85;margin-bottom:6px}
+.result-card .r-label{font-size:12px;letter-spacing:3px;color:var(--dim)}
 .result-card .r-value{margin-top:8px;font-size:clamp(22px,4.5vw,32px);font-weight:800;color:#eaf6ff;
   font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(0,212,255,.35)}
 .result-card .r-value small{font-size:12px;color:var(--dim);font-weight:400;margin-left:3px}
@@ -147,13 +226,13 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
 .r-pending .r-value{color:var(--dim);text-shadow:none}
 
 /* ---------- 历史记录 ---------- */
-.history{margin-top:20px;padding:18px 20px}
+.history{margin-top:20px;padding:20px 22px;border-radius:22px}
 .history h3{font-size:14px;letter-spacing:4px;color:var(--gold);margin-bottom:12px;text-align:center}
 .history-list{list-style:none;display:flex;flex-direction:column;gap:8px}
 .history-list li{
   display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
-  padding:9px 14px;border-radius:10px;
-  background:rgba(0,212,255,.045);border:1px solid rgba(0,212,255,.13);
+  padding:9px 14px;border-radius:12px;
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.10);
   font-size:13px;letter-spacing:1px;animation:histIn .4s ease both;
 }
 @keyframes histIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
@@ -164,7 +243,11 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
 
 /* ---------- 页脚 ---------- */
 footer{margin-top:36px;text-align:center;position:relative;z-index:2}
-footer .note{font-size:12px;letter-spacing:2px;color:var(--dim);opacity:.8;line-height:2}
+footer .motto{
+  font-size:clamp(15px,3.4vw,20px);letter-spacing:6px;color:var(--gold);
+  text-shadow:0 0 16px rgba(240,192,64,.55);
+}
+footer .note{margin-top:10px;font-size:12px;letter-spacing:2px;color:var(--dim);opacity:.8;line-height:2}
 footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
   background:linear-gradient(90deg,transparent,rgba(0,212,255,.5),transparent)}
 
@@ -182,19 +265,38 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
 <body>
 
 <canvas id="bgCanvas"></canvas>
+<!-- 仙舟罗浮背景 -->
+<div class="bg-art"></div>
+<!-- 六边形装饰 -->
+<div class="hex-deco hd1"></div>
+<div class="hex-deco hd2"></div>
+<div class="hex-deco hd3"></div>
 
 <div class="page">
 
   <!-- ===== 页头 ===== -->
   <header>
-    <div class="logo">✦ 星网测速</div>
-    <p class="sub">STARNET SPEED TEST · CLOUDFLARE 全球节点</p>
-    <div class="info-bar" id="infoBar">正在获取网络信息…</div>
+    <div class="title-row">
+      <div class="title-emblem">
+        <img class="title-icon" src="assets/img/icon-divination.png" alt="太卜司" onerror="this.style.display='none'">
+      </div>
+      <div>
+        <div class="logo">✦ 星穹测速</div>
+        <p class="sub">仙舟罗浮 · 轨道监测站 · CLOUDFLARE 全球节点</p>
+      </div>
+    </div>
+    <div class="path-badges">
+      <span class="path-badge">巡猎</span>
+      <span class="path-badge gold">丰饶</span>
+      <span class="path-badge purple">存护</span>
+      <span class="path-badge">同谐</span>
+    </div>
+    <div class="info-bar glass" id="infoBar">正在接入罗浮监测网络…</div>
   </header>
 
   <!-- ===== 仪表盘 + 曲线 ===== -->
   <div class="main-grid">
-    <div class="card gauge-card">
+    <div class="glass gauge-card">
       <div class="gauge-wrap">
         <svg viewBox="0 0 220 220">
           <defs>
@@ -212,10 +314,10 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
           <div class="gauge-unit" id="gaugeUnit">Mbps</div>
         </div>
       </div>
-      <div class="gauge-status" id="gaugeStatus"><span class="dot"></span>准备就绪</div>
+      <div class="gauge-status" id="gaugeStatus"><span class="dot"></span>轨道就绪</div>
     </div>
 
-    <div class="card chart-card">
+    <div class="glass chart-card">
       <h3>实时速率曲线 <span id="chartPhase">—</span></h3>
       <canvas id="speedChart"></canvas>
       <div class="chart-legend">
@@ -232,24 +334,28 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
     <button class="btn gold" id="shareBtn">📋 分享结果</button>
   </div>
 
-  <!-- ===== 结果卡片 ===== -->
+  <!-- ===== 结果卡片（命途对应：存护-延迟 / 同谐-抖动 / 巡猎-下载 / 丰饶-上传） ===== -->
   <div class="results" id="results">
-    <div class="card result-card r-pending">
+    <div class="glass result-card r-pending">
+      <div class="r-path">✦ 存护</div>
       <div class="r-label">延迟 Ping</div>
       <div class="r-value">--<small>ms</small></div>
       <div class="r-grade" id="gradePing">—</div>
     </div>
-    <div class="card result-card r-pending">
+    <div class="glass result-card r-pending">
+      <div class="r-path">♪ 同谐</div>
       <div class="r-label">抖动 Jitter</div>
       <div class="r-value">--<small>ms</small></div>
       <div class="r-grade" id="gradeJitter">—</div>
     </div>
-    <div class="card result-card r-pending">
+    <div class="glass result-card r-pending">
+      <div class="r-path">➤ 巡猎</div>
       <div class="r-label">下载 Download</div>
       <div class="r-value">--<small>Mbps</small></div>
       <div class="r-grade" id="gradeDown">—</div>
     </div>
-    <div class="card result-card r-pending">
+    <div class="glass result-card r-pending">
+      <div class="r-path">❀ 丰饶</div>
       <div class="r-label">上传 Upload</div>
       <div class="r-value">--<small>Mbps</small></div>
       <div class="r-grade" id="gradeUp">—</div>
@@ -257,14 +363,15 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
   </div>
 
   <!-- ===== 历史记录 ===== -->
-  <div class="card history">
-    <h3>◆ 历史测速记录 ◆</h3>
+  <div class="glass history">
+    <h3>◆ 星轨测速记录 ◆</h3>
     <ul class="history-list" id="historyList"></ul>
   </div>
 
   <!-- ===== 页脚 ===== -->
   <footer>
-    <div class="note">测速数据由 Cloudflare 全球节点（就近 PoP）提供，仅供参考 · 实际速率受服务器、时段与网络环境影响<br>本页面纯前端实现，测速过程不会上传你的任何真实数据（上传测试使用随机数据）</div>
+    <div class="motto">「愿此行，终抵群星」</div>
+    <div class="note">测速数据由 Cloudflare 全球节点（就近 PoP）提供，仅供参考 · 实际速率受服务器、时段与网络环境影响<br>本页面为《崩坏：星穹铁道》主题同人测速站 · 纯前端实现，上传测试仅使用随机数据</div>
   </footer>
 </div>
 
@@ -272,7 +379,7 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
 
 <script>
 /* ============================================================
-   星网测速 —— 交互脚本
+   星穹测速 —— 交互脚本
    测速源：Cloudflare speed.cloudflare.com（CORS 已验证可用）
    - 下载：GET /__down?bytes=N（流式读取，实时统计）
    - 上传：POST /__up（随机数据，测吞吐）
@@ -341,7 +448,6 @@ function toast(msg) {
 /* ============================================================
    网络信息（IP / 城市 / ASN）—— 读取 /meta 响应头
    ============================================================ */
-/* 常见 ASN → ISP 名称 */
 const ASN_MAP = {
   '13335': 'Cloudflare',
   '4134': '中国电信', '4809': '中国电信', '4812': '中国电信',
@@ -372,7 +478,7 @@ async function loadInfo() {
 /* ============================================================
    仪表盘 & 曲线
    ============================================================ */
-const CIRC = 2 * Math.PI * 100; // 圆周 ≈ 628.3
+const CIRC = 2 * Math.PI * 100;
 const gaugeArc = $('gaugeArc');
 const gaugeNum = $('gaugeNum');
 const gaugeUnit = $('gaugeUnit');
@@ -387,10 +493,9 @@ function setStatus(txt, showDot) {
   gaugeStatus.innerHTML = (showDot ? '<span class="dot"></span>' : '') + txt;
 }
 
-/* 曲线图（双色：下载青 / 上传金） */
 const chart = $('speedChart');
 const cctx = chart.getContext('2d');
-let chartSamples = [];   // {t, mbps, up}
+let chartSamples = [];
 let chartPhase = '';
 let lastMax = 100;
 
@@ -401,8 +506,7 @@ function drawChart() {
   cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   cctx.clearRect(0, 0, w, h);
 
-  /* 网格 */
-  cctx.strokeStyle = 'rgba(0,212,255,.08)';
+  cctx.strokeStyle = 'rgba(255,255,255,.07)';
   cctx.lineWidth = 1;
   for (let i = 1; i < 5; i++) {
     const y = h * i / 5;
@@ -416,12 +520,10 @@ function drawChart() {
     return;
   }
 
-  /* 动态 Y 轴上限 */
   const maxV = Math.max(...chartSamples.map(s => s.mbps), 1);
   lastMax = Math.max(lastMax * 0.92, Math.ceil(maxV / 10) * 10);
   const tMax = Math.max(...chartSamples.map(s => s.t), 1);
 
-  /* 下载曲线（青） */
   const dl = chartSamples.filter(s => !s.up);
   if (dl.length > 1) {
     const grad = cctx.createLinearGradient(0, 0, 0, h);
@@ -444,7 +546,6 @@ function drawChart() {
     cctx.stroke(); cctx.shadowBlur = 0;
   }
 
-  /* 上传曲线（金） */
   const up = chartSamples.filter(s => s.up);
   if (up.length > 1) {
     const grad = cctx.createLinearGradient(0, 0, 0, h);
@@ -467,7 +568,6 @@ function drawChart() {
     cctx.stroke(); cctx.shadowBlur = 0;
   }
 
-  /* Y 轴刻度 */
   cctx.fillStyle = 'rgba(127,155,192,.7)';
   cctx.font = '10px sans-serif';
   cctx.textAlign = 'right';
@@ -487,9 +587,8 @@ function pushSample(mbps, up) {
    测速逻辑
    ============================================================ */
 let running = false;
-let abort = null;   // AbortController
+let abort = null;
 
-/* ---------- 延迟 / 抖动 ---------- */
 async function testPing() {
   setStatus('Ping 测试中', true);
   $('chartPhase').textContent = 'Ping';
@@ -504,21 +603,18 @@ async function testPing() {
     setGauge(times[times.length - 1], 'ms', Math.max(0, 1 - times[times.length - 1] / 200));
     await sleep(60);
   }
-  /* 取中位数更抗噪 */
   const sorted = [...times].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
-  /* 抖动：相邻样本差均值 */
   let jsum = 0;
   for (let i = 1; i < times.length; i++) jsum += Math.abs(times[i] - times[i - 1]);
   const jitter = jsum / (times.length - 1);
   return { ping: median, jitter };
 }
 
-/* ---------- 下载测速（多阶段流式） ---------- */
 async function testDownload() {
   setStatus('下载测速中', true);
   $('chartPhase').textContent = '下载';
-  const stages = [4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024]; // 4MB / 16MB / 64MB
+  const stages = [4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024];
   const speeds = [];
   for (const bytes of stages) {
     if (abort.signal.aborted) throw new Error('aborted');
@@ -535,7 +631,7 @@ async function testDownload() {
         received += value.length;
         const now = performance.now();
         if (now - lastTick >= 200) {
-          const inst = (received - lastBytes) * 8 / (now - lastTick) / 1000; // Mbps
+          const inst = (received - lastBytes) * 8 / (now - lastTick) / 1000;
           lastBytes = received; lastTick = now;
           setGauge(inst, 'Mbps', inst / Math.max(lastMax, inst));
           pushSample(inst, false);
@@ -550,17 +646,14 @@ async function testDownload() {
     const mbps = received * 8 / secs / 1e6;
     speeds.push(mbps);
   }
-  /* 取最大阶段速率作为结果（更接近真实带宽） */
   return Math.max(...speeds);
 }
 
-/* ---------- 上传测速（多阶段 POST 随机数据） ---------- */
 async function testUpload() {
   setStatus('上传测速中', true);
   $('chartPhase').textContent = '上传';
-  const stages = [2 * 1024 * 1024, 8 * 1024 * 1024, 32 * 1024 * 1024]; // 2MB / 8MB / 32MB
+  const stages = [2 * 1024 * 1024, 8 * 1024 * 1024, 32 * 1024 * 1024];
   const speeds = [];
-  /* 预生成随机数据缓冲（复用，避免重复生成卡顿） */
   const chunk = new Uint8Array(1024 * 1024);
   for (let i = 0; i < chunk.length; i++) chunk[i] = (Math.random() * 256) | 0;
 
@@ -610,7 +703,6 @@ function gradeSpeed(v) {
   return ['较差', 'grade-bad'];
 }
 
-/* ---------- 结果渲染 ---------- */
 function setResult(idx, label, value, unit, grade, gClass) {
   const card = document.querySelectorAll('#results .result-card')[idx];
   card.classList.remove('r-pending');
@@ -664,7 +756,6 @@ async function runTest() {
   startBtn.textContent = '⏳ 测速中…';
   abort = new AbortController();
 
-  /* 重置界面 */
   chartSamples = []; lastMax = 100; drawChart();
   setGauge(0, 'Mbps', 0);
   $('chartStats').textContent = '等待测试';
@@ -677,20 +768,17 @@ async function runTest() {
 
   let ping = 0, jitter = 0, down = 0, up = 0;
   try {
-    /* ① 延迟 + 抖动 */
     const p = await testPing();
     ping = p.ping; jitter = p.jitter;
     const gPing = gradePing(ping), gJit = gradeJitter(jitter);
     setResult(0, 'Ping', ping, 'ms', gPing[0], gPing[1]);
     setResult(1, 'Jitter', jitter, 'ms', gJit[0], gJit[1]);
 
-    /* ② 下载 */
     down = await testDownload();
     const gD = gradeSpeed(down);
     setResult(2, 'Download', down, 'Mbps', gD[0], gD[1]);
     setGauge(down, 'Mbps', 1);
 
-    /* ③ 上传 */
     up = await testUpload();
     const gU = gradeSpeed(up);
     setResult(3, 'Upload', up, 'Mbps', gU[0], gU[1]);
@@ -715,17 +803,16 @@ async function runTest() {
 
 startBtn.addEventListener('click', runTest);
 
-/* 分享结果 */
 shareBtn.addEventListener('click', () => {
   const cards = document.querySelectorAll('#results .result-card');
   const vals = [...cards].map(c => c.querySelector('.r-value').textContent.trim());
   if (vals.every(v => v.startsWith('--'))) { toast('请先完成一次测速'); return; }
-  const text = '✦ 星网测速结果 ✦\n' +
-    '延迟: ' + vals[0] + '\n' +
-    '抖动: ' + vals[1] + '\n' +
-    '下载: ' + vals[2] + '\n' +
-    '上传: ' + vals[3] + '\n' +
-    '—— 星网测速 STARNET SPEED TEST';
+  const text = '✦ 星穹测速 · 仙舟罗浮轨道监测 ✦\n' +
+    '延迟(存护): ' + vals[0] + '\n' +
+    '抖动(同谐): ' + vals[1] + '\n' +
+    '下载(巡猎): ' + vals[2] + '\n' +
+    '上传(丰饶): ' + vals[3] + '\n' +
+    '—— 愿此行，终抵群星';
   (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
     .then(() => toast('📋 结果已复制到剪贴板'))
     .catch(() => { toast('复制失败，请手动截图分享'); });
