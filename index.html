@@ -241,6 +241,36 @@ header::after{content:"";display:block;width:64%;margin:14px auto 0;height:1px;
 .history-list .h-metrics b{color:var(--cyan);font-weight:600}
 .history-empty{justify-content:center;color:var(--dim);letter-spacing:3px;font-size:13px}
 
+/* ---------- 描边按钮（持续测速用） ---------- */
+.btn.line{
+  background:transparent;color:var(--cyan);
+  border:1.5px solid rgba(0,212,255,.55);
+  box-shadow:0 0 16px rgba(0,212,255,.18);
+}
+.btn.line:hover{background:rgba(0,212,255,.12);box-shadow:0 0 28px rgba(0,212,255,.35)}
+.btn.line.stop{color:#ff5a6e;border-color:rgba(255,90,110,.6);box-shadow:0 0 16px rgba(255,90,110,.25)}
+
+/* ---------- IP 检测（ping0.cc 风格） ---------- */
+.ip-card{margin-top:20px;padding:18px 20px}
+.ip-head{font-size:14px;letter-spacing:4px;color:var(--gold);margin-bottom:12px;text-align:center}
+.ip-addr{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.ip-line{display:flex;align-items:center;gap:10px;font-size:14px;letter-spacing:1px}
+.ip-tag{font-size:11px;padding:2px 8px;border-radius:6px;letter-spacing:1px}
+.ip-tag.v4{color:var(--cyan);border:1px solid rgba(0,212,255,.4);background:rgba(0,212,255,.08)}
+.ip-tag.v6{color:var(--gold);border:1px solid rgba(240,192,64,.4);background:rgba(240,192,64,.08)}
+.ip-line b{color:#eaf6ff;font-weight:600;word-break:break-all}
+.ip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.ip-item{display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-radius:10px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+.ip-item span{font-size:11px;color:var(--dim);letter-spacing:2px}
+.ip-item b{font-size:13px;color:var(--text);font-weight:600}
+.ip-nodes{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--dim)}
+.ip-nodes .node{padding:4px 10px;border-radius:999px;border:1px solid rgba(0,212,255,.25);
+  background:rgba(0,212,255,.05);letter-spacing:1px}
+.ip-nodes .node b{color:var(--cyan);font-weight:600;margin-left:4px}
+.ip-nodes .node.node-timeout{border-color:rgba(255,90,110,.35);background:rgba(255,90,110,.06)}
+.ip-nodes .node.node-timeout b{color:var(--bad)}
+
 /* ---------- 页脚 ---------- */
 footer{margin-top:36px;text-align:center;position:relative;z-index:2}
 footer .motto{
@@ -294,6 +324,23 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
     <div class="info-bar glass" id="infoBar">正在接入罗浮监测网络…</div>
   </header>
 
+  <!-- ===== IP 检测（ping0.cc 风格） ===== -->
+  <div class="glass ip-card" id="ipCard">
+    <div class="ip-head">📡 IP 检测 · 网络身份</div>
+    <div class="ip-addr">
+      <div class="ip-line"><span class="ip-tag v4">IPv4</span><b id="ipv4">检测中…</b></div>
+      <div class="ip-line"><span class="ip-tag v6">IPv6</span><b id="ipv6">检测中…</b></div>
+    </div>
+    <div class="ip-grid">
+      <div class="ip-item"><span>归属地</span><b id="ipLoc">—</b></div>
+      <div class="ip-item"><span>运营商</span><b id="ipIsp">—</b></div>
+      <div class="ip-item"><span>ASN</span><b id="ipAsn">—</b></div>
+      <div class="ip-item"><span>经纬度</span><b id="ipGeo">—</b></div>
+      <div class="ip-item"><span>时区</span><b id="ipTz">—</b></div>
+    </div>
+    <div class="ip-nodes" id="ipNodes">多节点延迟检测中…</div>
+  </div>
+
   <!-- ===== 仪表盘 + 曲线 ===== -->
   <div class="main-grid">
     <div class="glass gauge-card">
@@ -331,6 +378,7 @@ footer::before{content:"";display:block;width:56%;margin:0 auto 14px;height:1px;
   <!-- ===== 控制按钮 ===== -->
   <div class="controls">
     <button class="btn" id="startBtn">🚀 开始测速</button>
+    <button class="btn line" id="contBtn" type="button">🔁 持续测速</button>
     <button class="btn gold" id="shareBtn">📋 分享结果</button>
   </div>
 
@@ -611,10 +659,10 @@ async function testPing() {
   return { ping: median, jitter };
 }
 
-async function testDownload() {
+async function testDownload(stageBytes) {
   setStatus('下载测速中', true);
   $('chartPhase').textContent = '下载';
-  const stages = [4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024];
+  const stages = stageBytes || [4 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024 * 1024];
   const speeds = [];
   for (const bytes of stages) {
     if (abort.signal.aborted) throw new Error('aborted');
@@ -649,17 +697,22 @@ async function testDownload() {
   return Math.max(...speeds);
 }
 
-async function testUpload() {
+async function testUpload(stageBytes) {
   setStatus('上传测速中', true);
   $('chartPhase').textContent = '上传';
-  const stages = [2 * 1024 * 1024, 8 * 1024 * 1024, 32 * 1024 * 1024];
+  const stages = stageBytes || [2 * 1024 * 1024, 8 * 1024 * 1024, 32 * 1024 * 1024];
   const speeds = [];
-  const chunk = new Uint8Array(1024 * 1024);
-  for (let i = 0; i < chunk.length; i++) chunk[i] = (Math.random() * 256) | 0;
+  /* 预生成最大阶段所需随机缓冲，各阶段按真实字节数发送（修复上传虚高 bug） */
+  const maxBytes = Math.max(...stages);
+  const buf = new Uint8Array(maxBytes);
+  for (let i = 0; i < buf.length; i += 65536) {
+    const end = Math.min(i + 65536, buf.length);
+    for (let j = i; j < end; j++) buf[j] = (Math.random() * 256) | 0;
+  }
 
   for (const bytes of stages) {
     if (abort.signal.aborted) throw new Error('aborted');
-    const blob = new Blob([chunk.slice(0, Math.min(bytes, chunk.length))]);
+    const blob = new Blob([buf.subarray(0, bytes)]);
     const t0 = performance.now();
     try {
       await fetch(CF + '/__up', {
@@ -712,6 +765,16 @@ function setResult(idx, label, value, unit, grade, gClass) {
   g.className = 'r-grade ' + gClass;
 }
 
+/* 重置四张结果卡片为待测状态 */
+function resetResultCards() {
+  document.querySelectorAll('#results .result-card').forEach(c => {
+    c.classList.add('r-pending');
+    c.querySelector('.r-value').innerHTML = '--<small>—</small>';
+    c.querySelector('.r-grade').textContent = '—';
+    c.querySelector('.r-grade').className = 'r-grade';
+  });
+}
+
 /* ============================================================
    历史记录（localStorage）
    ============================================================ */
@@ -744,9 +807,147 @@ function pushHistory(r) {
 }
 
 /* ============================================================
+   IP 检测（ping0.cc 风格）
+   - IPv4 / IPv6：ipify 双栈查询
+   - 归属地 / 运营商 / ASN / 经纬度 / 时区：ipwho.is（免费 CORS）
+   - 多节点延迟：no-cors fetch 计时（无需 CORS 也可测）
+   ============================================================ */
+async function loadIpInfo() {
+  /* IPv4 */
+  try {
+    const r = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    const j = await r.json();
+    if (j.ip) $('ipv4').textContent = j.ip;
+  } catch (e) { /* 忽略 */ }
+  /* IPv6（api64 双栈优先返回 IPv6；纯 v4 网络则提示未检测到） */
+  try {
+    const r = await fetch('https://api64.ipify.org?format=json', { cache: 'no-store' });
+    const j = await r.json();
+    if (j.ip && j.ip.indexOf(':') >= 0) $('ipv6').textContent = j.ip;
+    else $('ipv6').textContent = '未检测到 IPv6';
+  } catch (e) {
+    $('ipv6').textContent = '未检测到 IPv6';
+  }
+  /* 归属地详情 */
+  try {
+    const r = await fetch('https://ipwho.is/', { cache: 'no-store' });
+    const j = await r.json();
+    if (j && j.success) {
+      const conn = j.connection || {};
+      $('ipLoc').textContent = [j.country, j.region, j.city].filter(Boolean).join(' · ');
+      $('ipIsp').textContent = conn.isp || conn.org || '—';
+      $('ipAsn').textContent = conn.asn ? 'AS' + conn.asn : '—';
+      $('ipGeo').textContent = (j.latitude != null && j.longitude != null)
+        ? j.latitude.toFixed(3) + ', ' + j.longitude.toFixed(3) : '—';
+      $('ipTz').textContent = (j.timezone && j.timezone.id) || '—';
+    }
+  } catch (e) {
+    $('ipLoc').textContent = '归属地获取失败（可继续测速）';
+  }
+}
+
+/* 单节点延迟：no-cors fetch 计时，带超时保护 */
+async function nodePing(url, timeout) {
+  const t0 = performance.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout || 5000);
+  try {
+    await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+    return Math.round(performance.now() - t0);
+  } catch (e) {
+    return -1; // 超时或不可达
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* 多节点延迟检测（并行） */
+async function loadNodes() {
+  const nodes = [
+    ['Cloudflare', 'https://speed.cloudflare.com/__down?bytes=0'],
+    ['谷歌', 'https://www.gstatic.com/generate_204'],
+    ['微软', 'https://www.microsoft.com/'],
+    ['苹果', 'https://www.apple.com/'],
+    ['百度', 'https://www.baidu.com/'],
+    ['阿里云', 'https://www.aliyun.com/'],
+    ['腾讯', 'https://www.tencent.com/'],
+    ['网易', 'https://www.163.com/']
+  ];
+  const results = await Promise.all(nodes.map(async (n) => {
+    const ms = await nodePing(n[1]);
+    return { name: n[0], ms };
+  }));
+  $('ipNodes').innerHTML = results.map((r) =>
+    '<span class="node' + (r.ms < 0 ? ' node-timeout' : '') + '">' + r.name +
+    ' <b>' + (r.ms < 0 ? '超时' : r.ms + 'ms') + '</b></span>'
+  ).join('');
+}
+
+/* ============================================================
+   持续测速模式：自动循环下载+上传，实时刷新曲线
+   ============================================================ */
+let continuous = false;   // 持续测速开关
+let contAbort = null;     // 持续测速专用 AbortController
+
+async function runContinuous() {
+  if (running) return;
+  running = true;
+  continuous = true;
+  startBtn.disabled = true;
+  contBtn.textContent = '⏹ 停止持续测速';
+  contBtn.classList.add('stop');
+  abort = contAbort = new AbortController();
+
+  chartSamples = []; lastMax = 100; drawChart();
+  setGauge(0, 'Mbps', 0);
+  resetResultCards();
+  $('chartStats').textContent = '持续测速中…';
+
+  let cycles = 0, sumDown = 0, sumUp = 0, bestDown = 0, bestUp = 0;
+  try {
+    while (continuous && !contAbort.signal.aborted) {
+      cycles++;
+      setStatus('持续测速 · 第 ' + cycles + ' 轮', true);
+      /* 每轮：下载 8MB + 上传 4MB（轻量快速，适合长跑） */
+      $('chartPhase').textContent = '下载 ' + cycles;
+      const down = await testDownload([8 * 1024 * 1024]);
+      const gD = gradeSpeed(down);
+      setResult(2, 'Download', down, 'Mbps', gD[0], gD[1]);
+      setGauge(down, 'Mbps', 1);
+      sumDown += down; bestDown = Math.max(bestDown, down);
+
+      $('chartPhase').textContent = '上传 ' + cycles;
+      const up = await testUpload([4 * 1024 * 1024]);
+      const gU = gradeSpeed(up);
+      setResult(3, 'Upload', up, 'Mbps', gU[0], gU[1]);
+      setGauge(up, 'Mbps', 1);
+      sumUp += up; bestUp = Math.max(bestUp, up);
+
+      $('chartStats').textContent = '第' + cycles + '轮 · 平均↓' +
+        fmt(sumDown / cycles) + ' ↑' + fmt(sumUp / cycles) +
+        ' · 峰值↓' + fmt(bestDown) + ' ↑' + fmt(bestUp);
+      await sleep(200);
+    }
+    setStatus('持续测速已停止', false);
+  } catch (e) {
+    if (e.message !== 'aborted') {
+      setStatus('⚠ ' + e.message, false);
+      toast('⚠ ' + e.message);
+    }
+  } finally {
+    continuous = false;
+    running = false;
+    startBtn.disabled = false;
+    contBtn.textContent = '🔁 持续测速';
+    contBtn.classList.remove('stop');
+  }
+}
+
+/* ============================================================
    测速主流程
    ============================================================ */
 const startBtn = $('startBtn');
+const contBtn = $('contBtn');
 const shareBtn = $('shareBtn');
 
 async function runTest() {
@@ -759,12 +960,7 @@ async function runTest() {
   chartSamples = []; lastMax = 100; drawChart();
   setGauge(0, 'Mbps', 0);
   $('chartStats').textContent = '等待测试';
-  document.querySelectorAll('#results .result-card').forEach(c => {
-    c.classList.add('r-pending');
-    c.querySelector('.r-value').innerHTML = '--<small>—</small>';
-    c.querySelector('.r-grade').textContent = '—';
-    c.querySelector('.r-grade').className = 'r-grade';
-  });
+  resetResultCards();
 
   let ping = 0, jitter = 0, down = 0, up = 0;
   try {
@@ -803,6 +999,16 @@ async function runTest() {
 
 startBtn.addEventListener('click', runTest);
 
+/* 持续测速：运行中点击 = 停止；空闲点击 = 开始 */
+contBtn.addEventListener('click', () => {
+  if (running) {
+    continuous = false;
+    if (contAbort) contAbort.abort();
+    return;
+  }
+  runContinuous();
+});
+
 shareBtn.addEventListener('click', () => {
   const cards = document.querySelectorAll('#results .result-card');
   const vals = [...cards].map(c => c.querySelector('.r-value').textContent.trim());
@@ -823,6 +1029,8 @@ shareBtn.addEventListener('click', () => {
    ============================================================ */
 renderHistory();
 loadInfo();
+loadIpInfo();
+loadNodes();
 drawChart();
 addEventListener('resize', drawChart);
 </script>
